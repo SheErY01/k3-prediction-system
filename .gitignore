@@ -38,3 +38,8 @@ ENV/
 
 # Replit
 .pythonlibs/
+
+# Ignore local environment and crash files
+.local/
+.config/
+*.bin
