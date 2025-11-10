@@ -13,7 +13,8 @@ def get_predictions():
     return jsonify({
         "predictions": predictions_today,
         "stats": daily_stats,
-        "results_history": results_history[-10:] if results_history else []
+        "results_history": results_history[-10:] if results_history else [],
+        "latest_result": results_history[-1] if results_history else None
     })
 
 @app.route('/api/stats')
