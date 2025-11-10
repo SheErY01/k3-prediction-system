@@ -1,8 +1,7 @@
 import schedule
 import time
 from datetime import datetime
-from app.prediction import scrape_results, analyze_pattern, predictions_today, daily_stats, MAX_DAILY_PREDICTIONS
-from app.email_service import send_email
+from app.prediction import scrape_results, analyze_pattern, predictions_today, daily_stats, MAX_DAILY_PREDICTIONS, results_history
 
 def make_prediction():
     if daily_stats['total'] >= MAX_DAILY_PREDICTIONS:
@@ -12,20 +11,17 @@ def make_prediction():
     if not data:
         return
 
-    prediction, confidence = analyze_pattern(predictions_today)
-    if prediction in [3, 18] and confidence >= 70:
-        alert_msg = (
-            f"🎯 Prediction Alert\n"
-            f"Number: {prediction}\n"
-            f"Period: {data['period']}\n"
-            f"Time: {datetime.now().strftime('%I:%M %p')}\n"
-            f"Confidence: {confidence}%"
-        )
-        send_email("K3 Prediction Alert", alert_msg)
+    prediction, confidence = analyze_pattern(results_history)
+    if prediction and confidence >= 70:
+        for pred in predictions_today:
+            if pred.get('period') == data['period'] and not pred.get('verified'):
+                return
+        
+        print(f"🎯 Prediction Alert - Number: {prediction}, Period: {data['period']}, Time: {datetime.now().strftime('%I:%M %p')}, Confidence: {confidence}%")
         predictions_today.append({
             'number': prediction,
             'period': data['period'],
-            'time': datetime.now(),
+            'time': datetime.now().isoformat(),
             'confidence': confidence,
             'verified': False
         })
@@ -49,29 +45,30 @@ def verify_predictions():
                 daily_stats['wrong'] += 1
                 daily_stats['profit'] -= 60
 
-def send_daily_summary():
-    subject = f"K3 Daily Summary - {datetime.now().date()}"
+def reset_daily_summary():
     if daily_stats['total'] > 0:
         accuracy = (daily_stats['correct'] / daily_stats['total']) * 100
-        body = (
-            f"📊 Total: {daily_stats['total']}\n"
+        summary = (
+            f"📊 Daily Summary - {datetime.now().date()}\n"
+            f"Total: {daily_stats['total']}\n"
             f"✅ Correct: {daily_stats['correct']}\n"
             f"❌ Wrong: {daily_stats['wrong']}\n"
             f"🎯 Accuracy: {accuracy:.2f}%\n"
             f"💰 Profit: ₹{daily_stats['profit']}"
         )
     else:
-        body = "No predictions made today. System was monitoring."
+        summary = "No predictions made today. System was monitoring."
 
-    send_email(subject, body)
+    print(summary)
     predictions_today.clear()
     daily_stats.update({'total': 0, 'correct': 0, 'wrong': 0, 'profit': 0})
 
 def start_scheduler():
     schedule.every(1).minutes.do(make_prediction)
     schedule.every(1).minutes.do(verify_predictions)
-    schedule.every().day.at("22:00").do(send_daily_summary)
+    schedule.every().day.at("22:00").do(reset_daily_summary)
 
+    print("✅ Scheduler started - Monitoring for predictions every minute")
     while True:
         schedule.run_pending()
         time.sleep(1)

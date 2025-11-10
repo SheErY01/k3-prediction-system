@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K3 Prediction System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card.correct .value {
+            color: #10b981;
+        }
+
+        .stat-card.wrong .value {
+            color: #ef4444;
+        }
+
+        .stat-card.profit .value {
+            color: #f59e0b;
+        }
+
+        .predictions-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .predictions-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .predictions-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .prediction-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 5px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .prediction-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .prediction-item.verified.correct {
+            border-left-color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .prediction-item.verified.wrong {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .prediction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .prediction-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .prediction-item.verified.correct .prediction-number {
+            color: #10b981;
+        }
+
+        .prediction-item.verified.wrong .prediction-number {
+            color: #ef4444;
+        }
+
+        .prediction-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-correct {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-wrong {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .prediction-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .no-predictions {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 1.1em;
+        }
+
+        .update-info {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+
+        .confidence-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #10b981;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><span class="live-indicator"></span>K3 Prediction System</h1>
+            <p>Real-time Lottery Predictions & Analytics</p>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="label">Total Predictions</div>
+                <div class="value" id="totalPredictions">0</div>
+            </div>
+            <div class="stat-card correct">
+                <div class="label">Correct</div>
+                <div class="value" id="correctPredictions">0</div>
+            </div>
+            <div class="stat-card wrong">
+                <div class="label">Wrong</div>
+                <div class="value" id="wrongPredictions">0</div>
+            </div>
+            <div class="stat-card profit">
+                <div class="label">Profit</div>
+                <div class="value" id="profitValue">₹0</div>
+            </div>
+        </div>
+
+        <div class="predictions-section">
+            <h2>Today's Predictions</h2>
+            <div class="predictions-list" id="predictionsList">
+                <div class="no-predictions">
+                    Waiting for predictions... System is monitoring and will alert when conditions are met.
+                </div>
+            </div>
+        </div>
+
+        <div class="update-info">
+            Last updated: <span id="lastUpdate">Never</span> | Auto-refresh every 5 seconds
+        </div>
+    </div>
+
+    <script>
+        function updateData() {
+            fetch('/api/predictions')
+                .then(response => response.json())
+                .then(data => {
+                    updateStats(data.stats);
+                    updatePredictions(data.predictions);
+                    updateLastUpdate();
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        }
+
+        function updateStats(stats) {
+            document.getElementById('totalPredictions').textContent = stats.total || 0;
+            document.getElementById('correctPredictions').textContent = stats.correct || 0;
+            document.getElementById('wrongPredictions').textContent = stats.wrong || 0;
+            document.getElementById('profitValue').textContent = '₹' + (stats.profit || 0);
+        }
+
+        function updatePredictions(predictions) {
+            const container = document.getElementById('predictionsList');
+            
+            if (!predictions || predictions.length === 0) {
+                container.innerHTML = '<div class="no-predictions">Waiting for predictions... System is monitoring and will alert when conditions are met.</div>';
+                return;
+            }
+
+            container.innerHTML = predictions.map(pred => {
+                const verified = pred.verified || false;
+                const correct = pred.correct || false;
+                const statusClass = verified ? (correct ? 'verified correct' : 'verified wrong') : '';
+                const badgeClass = verified ? (correct ? 'badge-correct' : 'badge-wrong') : 'badge-pending';
+                const badgeText = verified ? (correct ? '✓ Correct' : '✗ Wrong') : 'Pending';
+                
+                const time = pred.time ? new Date(pred.time).toLocaleTimeString() : 'N/A';
+                
+                return `
+                    <div class="prediction-item ${statusClass}">
+                        <div class="prediction-header">
+                            <div class="prediction-number">${pred.number}</div>
+                            <div class="prediction-badge ${badgeClass}">${badgeText}</div>
+                        </div>
+                        <div class="prediction-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Period</span>
+                                <span>${pred.period || 'N/A'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Time</span>
+                                <span>${time}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Confidence</span>
+                                <span>${pred.confidence || 0}%</span>
+                            </div>
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${pred.confidence || 0}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+        }
+
+        updateData();
+        setInterval(updateData, 5000);
+    </script>
+</body>
+</html>
